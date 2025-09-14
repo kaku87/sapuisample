@@ -10,16 +10,14 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { useRouter } from 'vue-router';
-import { useErrorStore } from '../stores/error.js';
 
 const router = useRouter();
-const errorStore = useErrorStore();
 
-function go(code) {
-  errorStore.setStatus(code);
-  router.push({ name: 'error' });
+function go(code: number) {
+  // Navigate with status via route param
+  router.push({ name: 'error', params: { status: code } });
 }
 </script>
 

@@ -6,7 +6,7 @@
         <!-- Alert box on top -->
         <ui5-message-strip
           class="ias-alert"
-          :design="state.status === 500 ? 'Negative' : 'Attention'"
+          :design="status === 500 ? 'Negative' : 'Attention'"
           hide-close-button
         >
           <div class="ias-alert-ja">{{ messageText }}</div>
@@ -22,57 +22,47 @@
           <div class="ias-badge-cn">{{ messageText }}</div>
         </div>
 
-        <!-- No local simulation buttons; status driven by query/props -->
+        <!-- No local simulation buttons; status driven by route params -->
 
       </div>
     </div>
   </div>
 </template>
 
-<script setup>
-import { computed, reactive, onMounted } from 'vue';
+<script setup lang="ts">
+import { computed, ref, onMounted } from 'vue';
+import { useRoute } from 'vue-router';
 // Register icon component and explicitly register v1 icon variant
 import '@ui5/webcomponents/dist/Icon.js';
 import '@ui5/webcomponents-icons-business-suite/dist/v1/face-bad.js';
-import { t } from '../i18n/messages.js';
-import { useErrorStore } from '../stores/error.js';
+import { getAppBundle } from '../i18n/bundle.ts';
 
-const props = defineProps({
-  responseStatus: {
-    type: Number,
-    required: false,
-    default: undefined,
-  },
-});
-
-
-// Status comes implicitly via Pinia store
-
-const state = reactive({
-  status: undefined,
-});
-
-const errorStore = useErrorStore();
-
-onMounted(() => {
-  // If prop not passed, read from Pinia store
-  state.status = props.responseStatus ?? errorStore.status ?? null;
+// Read status from route params only (single source of truth)
+const route = useRoute();
+const status = computed<number | null>(() => {
+  const fromParam = route.params?.status;
+  const raw = fromParam ?? null;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : null;
 });
 
 const messageId = computed(() => {
-  const s = Number(state.status);
+  const s = Number(status.value);
   if (s === 403) return 'COMMON-ERROR-403';
   if (s === 500) return 'COMMON-ERROR-500';
   return 'COMMON-ERROR-500';
 });
 
-const messageText = computed(() => t(messageId.value));
+const bundle = ref<any | null>(null);
+onMounted(async () => {
+  bundle.value = await getAppBundle();
+});
 
+const messageText = computed(() =>
+  bundle.value ? bundle.value.getText(messageId.value) : messageId.value
+);
 
-function onRetry() {
-  window.location.reload();
-}
-
+function onRetry() { window.location.reload(); }
 function onBack() {
   if (history.length > 1) history.back();
   else window.location.href = '/';
